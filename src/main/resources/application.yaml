@@ -1,0 +1,11 @@
+server:
+  port: 8081
+
+spring:
+  elasticsearch:
+    uris: https://localhost:9200
+    username: "elastic"
+    password: "$ES_PASSWORD"
+    ssl:
+      enabled: true
+      certificate-authorities: classpath:http_ca.crt
