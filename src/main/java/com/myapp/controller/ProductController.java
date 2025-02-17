@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/product")
@@ -19,27 +20,17 @@ import java.util.Map;
 public class ProductController {
     @Autowired
     private ProductService m_productService;
-    @Autowired
-    private ProductConverter m_productConverter;
 
     @GetMapping(value = "/list")
     public ResponseEntity<List<ProductDto>> listProduct(){
-        List<ProductDto> products = new ArrayList<>();
-        List<Product> productEntities = m_productService.listProducts();
-        for (Product product : productEntities){
-            if (product != null){
-                products.add(m_productConverter.productToDto(product));
-            }
-        }
+        List<ProductDto> products = m_productService.listProducts();
         return ResponseEntity.ok(products);
     }
 
     @PostMapping(value = "/add")
     public ResponseEntity<?> saveProduct(@RequestBody ProductDto productDto){
-        Product product = m_productConverter.productToEntity(productDto);
         try{
-            m_productService.saveProduct(product);
-            productDto.setId(product.getId());
+            m_productService.saveProduct(productDto);
             return ResponseEntity.ok(productDto);
         } catch (Exception e){
             return ResponseEntity.badRequest().body(Map.of("message", "Cannot add product"));
@@ -49,7 +40,7 @@ public class ProductController {
     @DeleteMapping(value = "/del/{id}")
     public ResponseEntity<String> deleteProduct(@PathVariable String id){
         try{
-            ProductDto productDto = m_productConverter.productToDto(m_productService.getProductById(id));
+            ProductDto productDto = m_productService.getProductById(id);
             if (productDto == null){
                 return ResponseEntity.ok("Product is not found");
             }
@@ -63,7 +54,7 @@ public class ProductController {
     @GetMapping(value = "/{id}")
     public ResponseEntity<?> getProductById(@PathVariable String id){
         try{
-            ProductDto productDto = m_productConverter.productToDto(m_productService.getProductById(id));
+            ProductDto productDto = m_productService.getProductById(id);
             if (productDto == null){
                 return ResponseEntity.ok().body(Map.of("message", "Product not found"));
             }
@@ -76,14 +67,27 @@ public class ProductController {
     @PostMapping(value = "/update/{id}")
     public ResponseEntity<?> updateProduct(@RequestBody ProductDto productDtoUp, @PathVariable String id) {
         try {
-            ProductDto productDto = m_productConverter.productToDto(m_productService.getProductById(id));
+            ProductDto productDto = m_productService.getProductById(id);
             if (productDto == null) {
                 return ResponseEntity.ok().body(Map.of("message", "Product not found"));
             }
-            m_productService.saveProduct(m_productConverter.productToEntity(productDto));
+            m_productService.saveProduct(productDto);
             return ResponseEntity.ok().body(productDto);
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", "Missing body request"));
         }
+    }
+
+    @RequestMapping(value = "/filter/{price}", method = RequestMethod.GET)
+    public ResponseEntity<?> filterPriceProduct(@PathVariable double price){
+        List<ProductDto> products = m_productService.processProduct(price);
+        return ResponseEntity.ok(products);
+    }
+
+    @RequestMapping(value = "/search", method = RequestMethod.GET)
+    public ResponseEntity<?> searchProductByName(@RequestBody String name){
+        List<ProductDto> products = m_productService.searchProductsByName(name);
+
+        return ResponseEntity.ok(products);
     }
 }

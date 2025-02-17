@@ -5,7 +5,7 @@ spring:
   elasticsearch:
     uris: https://localhost:9200
     username: "elastic"
-    password: "$ES_PASSWORD"
+    password: "${password}"
     ssl:
       enabled: true
       certificate-authorities: classpath:http_ca.crt
