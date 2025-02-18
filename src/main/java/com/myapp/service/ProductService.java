@@ -1,7 +1,6 @@
 package com.myapp.service;
 
 import com.myapp.dto.ProductDto;
-import com.myapp.entity.Product;
 
 import java.util.List;
 

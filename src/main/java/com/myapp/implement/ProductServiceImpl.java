@@ -1,6 +1,5 @@
 package com.myapp.implement;
 
-import com.myapp.controller.ProductController;
 import com.myapp.converter.ProductConverter;
 import com.myapp.dto.ProductDto;
 import com.myapp.entity.Product;
