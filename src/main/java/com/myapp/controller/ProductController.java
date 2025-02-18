@@ -2,6 +2,7 @@ package com.myapp.controller;
 
 import com.myapp.converter.ProductConverter;
 import com.myapp.dto.ProductDto;
+import com.myapp.dto.ProductQueryRequest;
 import com.myapp.entity.Product;
 import com.myapp.service.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -85,7 +86,8 @@ public class ProductController {
     }
 
     @RequestMapping(value = "/search", method = RequestMethod.GET)
-    public ResponseEntity<?> searchProductByName(@RequestBody String name){
+    public ResponseEntity<?> searchProductByName(@RequestBody ProductQueryRequest productQueryRequest){
+        String name = productQueryRequest.getQuery();
         List<ProductDto> products = m_productService.searchProductsByName(name);
 
         return ResponseEntity.ok(products);
