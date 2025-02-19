@@ -52,6 +52,8 @@ docker run -d --name kibana --net elastic \
 ### Update cacert when running spring boot application
 
 ```code
+Run with root user
+
 echo %JAVA_HOME%
 
 %JAVA_HOME%\lib\security\cacerts

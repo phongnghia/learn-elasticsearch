@@ -1,0 +1,51 @@
+#!/bin/bash
+
+ROOT_USER="root"
+
+ES_VOLUME="$HOME/ES_VOLUME"
+ES_USER=1000
+ES_CONTAINER_NAME="elasticsearch"
+ES_NET="elastic"
+ES_IMAGE="elasticsearch:8.17.1"
+
+KIBANA_CONTAINER_NAME="kibana"
+KIBANA_IMAGE="kibana:8.17.1"
+
+[ ! -d "$ES_VOLUME" ] && echo "$ES_VOLUME not exists. Creating" && rm -rf "$ES_VOLUME" && mkdir "$ES_VOLUME" && sudo chown -R $ES_USER:$ROOT_USER "$ES_VOLUME"
+
+[ -n "$(docker ps | grep $ES_CONTAINER_NAME)" ] && echo "Container is running" && exit 1
+
+[ -z "$(docker network ls | grep $ES_NET )" ] && echo "Creating $ES_NET network" && docker network create $ES_NET 2>/dev/null
+
+echo "Starting ES container"
+docker run -d --name $ES_CONTAINER_NAME \
+	-m 6G --net $ES_NET \
+	-e "xpack.ml.use_auto_machine_memory_percent=true" \
+	-v "$ES_VOLUME:/usr/share/elasticsearch/data" \
+	-it -p 9200:9200 \
+	$ES_IMAGE 2>/dev/null
+
+
+while true ; do
+  if [ -z "$(docker logs $ES_CONTAINER_NAME | grep "Elasticsearch security features have been automatically configured!")" ]; then
+    sleep 3
+    continue
+  else
+    break
+  fi
+done
+
+echo y | docker exec -i elasticsearch /usr/share/elasticsearch/bin/elasticsearch-reset-password -u elastic >> reset-password.txt 2>/dev/null
+NEW_ES_PASSWORD=$(grep -oE "New value.*" reset-password.txt | tr ':' '\n' | sed 's|^ ||' | tail -1)
+rm -rf reset-password.txt
+echo "New password: $NEW_ES_PASSWORD"
+echo "Enrollment token: $(docker exec -it $ES_CONTAINER_NAME /usr/share/elasticsearch/bin/elasticsearch-create-enrollment-token -s $KIBANA_CONTAINER_NAME)"
+
+docker cp elasticsearch:/usr/share/elasticsearch/config/certs/http_ca.crt . 2>/dev/null
+
+echo "Starting Kibana"
+docker run -d --name $KIBANA_CONTAINER_NAME \
+	--net $ES_NET -p 5601:5601 \
+	$KIBANA_IMAGE 2>/dev/null
+
+echo "Go to http://0.0.0.0:5601 to get started"
