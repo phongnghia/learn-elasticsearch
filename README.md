@@ -60,5 +60,18 @@ echo %JAVA_HOME%
 
 keytool -import -trustcacerts -keystore "%JAVA_HOME%\lib\security\cacerts" ^
         -storepass changeit -noprompt -alias elasticsearch -file http_ca.crt
+
+
+Remove alias (Run as Administration)
+
+keytool -delete -alias elasticsearch -keystore "%JAVA_HOME%\lib\security\cacerts"
+
 ```
 
+### Run spring boot application
+
+```code
+
+mvn clean spring-boot:run -Dpassword='<ES_PASSWORD>'
+
+```

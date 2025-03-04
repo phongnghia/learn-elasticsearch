@@ -1,0 +1,21 @@
+version: '3.9'
+
+services:
+  elasticsearch:
+    image: elasticsearch:8.17.1
+    container_name: elasticsearch
+    ports:
+      - "9200:9200"
+    environment:
+      xpack.ml.use_auto_machine_memory_percent: true
+    deploy:
+      resources:
+        limits:
+          memory: "6G"
+  kibana:
+    container_name: kibana
+    image: kibana:8.17.1
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch

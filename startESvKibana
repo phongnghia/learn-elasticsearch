@@ -1,0 +1,129 @@
+#!/bin/bash
+
+ES_CONTAINER_NAME="elasticsearch"
+KIBANA_CONTAINER_NAME="kibana"
+
+ES_RESET_PATH="/usr/share/elasticsearch/bin/elasticsearch-reset-password"
+ES_ENROLL_PATH="/usr/share/elasticsearch/bin/elasticsearch-create-enrollment-token"
+ES_HTTP_CA_CERT="/usr/share/elasticsearch/config/certs/http_ca.crt"
+ES_USERNAME="elastic"
+
+validate_command() {
+  [ ${1} -ne 0 ] && print_error "Command not correct" && exit 1
+}
+
+print_error() {
+  echo -e "\e[31m[ERROR]\e[0m ${1}"
+}
+
+print_warning(){
+  echo -e "\e[33m[WARNING]\e[0m ${1}"
+}
+
+print_success(){
+  echo -e "\e[32m[SUCCESS]\e[0m ${1}"
+}
+
+print_infor(){
+  echo -e "\033[34m[INFOR]\e[0m ${1}"
+}
+
+usage(){
+  echo -e "Start Elasticsearch and Kibana"
+  echo -e " -r| --reset     Reset Elastic password"
+  echo -e " -e| --enroll    Enrollment token for Kibana"
+  echo -e " -c| --clean     Clean existing containers"
+  echo -e " -h| --help      Usage"
+}
+
+reset_password(){
+  [ -z "$(docker ps | grep $ES_CONTAINER_NAME)" ] && print_error "Elasticsearch is not starting" && exit 1
+  echo y | docker exec -i $ES_CONTAINER_NAME $ES_RESET_PATH -u $ES_USERNAME >> reset-password.txt 2>/dev/null
+  NEW_ES_PASSWORD=$(grep -oE "New value.*" reset-password.txt | tr ':' '\n' | sed 's|^ ||' | tail -1)
+  rm -rf reset-password.txt
+  [ -z "$NEW_ES_PASSWORD" ] && print_error "Cannot reset password" && exit 1
+  print_success "New password: $NEW_ES_PASSWORD"
+}
+
+enroll(){
+  [ -z "$(docker ps | grep $ES_CONTAINER_NAME)" ] && print_error "Kibana is not starting" && exit 1
+  ENROLL_TOKEN=$(docker exec -it $ES_CONTAINER_NAME $ES_ENROLL_PATH -s $KIBANA_CONTAINER_NAME)
+  [ -z "$ENROLL_TOKEN" ] && print_error "Cannot enroll token" && exit 1
+  print_success "Enrollment token: $ENROLL_TOKEN"
+}
+
+clean(){
+  print_warning "Cleaning exists containers"
+  docker-compose down
+}
+
+main(){
+  CHECK_CONTAINERS=$(docker ps | grep -E "$ES_CONTAINER_NAME|$KIBANA_CONTAINER_NAME")
+  [ ! -z "$CHECK_CONTAINERS" ] && print_warning "Containers is starting. Exit 0" && exit 0
+  print_infor "Starting containers"
+  docker-compose up -d
+  while true ; do
+    if [ -z "$(docker logs $KIBANA_CONTAINER_NAME | grep 'Kibana has not been configured')" ]; then
+      sleep 3
+      continue
+    else
+      break
+    fi
+  done
+  docker cp "$ES_CONTAINER_NAME":"$ES_HTTP_CA_CERT" .
+  print_success "Elasticsearch and Kibana are started"
+  print_success "Http ca-certificate: http_ca.crt"
+}
+
+while [ $# -ne 0 ]; do
+  case $1 in
+  -r|--reset)
+  shift
+  validate_command $#
+  OPTION="reset_password"
+  print_infor "Reset Elastic password"
+  shift
+  ;;
+  -e|--enroll)
+  shift
+  validate_command $#
+  OPTION="enroll"
+  print_infor "Enrollment token for Kibana"
+  ;;
+  -c|--clean)
+  shift
+  validate_command $#
+  OPTION="clean"
+  ;;
+  -h|--help)
+  shift
+  validate_command $#
+  OPTION="usage"
+  ;;
+  *)
+  print_error "Invalid command '$1'"
+  exit 1
+  ;;
+  esac
+done
+
+case $OPTION in
+  usage)
+  usage
+  exit 0
+  ;;
+  reset_password)
+  reset_password
+  exit 0
+  ;;
+  enroll)
+  enroll
+  exit 0
+  ;;
+  clean)
+  clean
+  exit 0
+  ;;
+esac
+
+main
